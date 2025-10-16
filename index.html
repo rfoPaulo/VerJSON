@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualizador de Processos JSON Aprimorado</title>
+    <style>
+        /* Estilo geral do corpo da página */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            background-color: #f4f7f6;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+        }
+
+        /* Container principal para centralizar o conteúdo */
+        .container {
+            max-width: 95%;
+            margin: 0 auto;
+            background-color: #ffffff;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Título da página */
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 20px;
+        }
+        
+        /* Estilo do botão de upload de arquivo */
+        .file-upload-wrapper {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .file-upload-label {
+            display: inline-block;
+            padding: 12px 25px;
+            background-color: #3498db;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.3s ease;
+        }
+
+        .file-upload-label:hover {
+            background-color: #2980b9;
+        }
+        
+        #fileName {
+            margin-left: 15px;
+            font-style: italic;
+            color: #555;
+        }
+
+        /* Estilo do seletor de colunas */
+        #columnSelector {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        #columnSelector h3 {
+            margin-top: 0;
+            margin-bottom: 10px;
+            color: #34495e;
+        }
+        #columnSelector .checkbox-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        #columnSelector label {
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+        }
+        #columnSelector input[type="checkbox"] {
+            margin-right: 5px;
+        }
+
+        /* Container da Tabela com Barra Superior */
+        .table-container {
+            position: relative;
+        }
+        #top-scrollbar-container {
+            overflow-x: auto;
+            overflow-y: hidden;
+        }
+        #top-scrollbar-content {
+            height: 1px; /* Apenas para criar o espaço de rolagem */
+        }
+        
+        /* Estilo da área da tabela para rolagem */
+        .table-responsive {
+            max-height: 70vh;
+            overflow-y: auto;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            border: 1px solid #ddd;
+        }
+
+        /* Estilo da tabela */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        /* Estilo do cabeçalho da tabela */
+        thead th {
+            position: sticky;
+            top: 0;
+            background-color: #34495e;
+            color: #ffffff;
+            z-index: 10;
+        }
+
+        th, td {
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        th {
+            font-weight: 600;
+        }
+
+        /* Estilo das linhas da tabela */
+        tbody tr:nth-of-type(even) {
+            background-color: #f8f9fa;
+        }
+        tbody tr:hover {
+            background-color: #e9ecef;
+        }
+        
+        /* Estilos para a linha marcada e recolhida */
+        .row-strikethrough {
+            text-decoration: line-through;
+            color: #aaa;
+            background-color: #f0f0f0 !important;
+        }
+        .row-collapsed td > div {
+            max-height: 8em; /* (line-height) 1.6 * 5 = 8em */
+            overflow: hidden;
+        }
+        
+        /* Estilo para o alerta de tribunal */
+        .tribunal-alert {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+        
+        #status {
+            text-align: center;
+            font-size: 1.1em;
+            color: #7f8c8d;
+            margin-bottom: 20px;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Gerador de Tabela a partir de JSON</h1>
+        
+        <div class="file-upload-wrapper">
+            <label for="jsonFile" class="file-upload-label">Selecionar Arquivo JSON</label>
+            <input type="file" id="jsonFile" accept=".json">
+            <span id="fileName">Nenhum arquivo selecionado</span>
+        </div>
+
+        <p id="status">Aguardando arquivo para gerar a tabela...</p>
+
+        <div id="columnSelector" style="display: none;">
+            <h3>Escolha as Colunas:</h3>
+            <div id="columnCheckboxes" class="checkbox-group"></div>
+        </div>
+
+        <div class="table-container">
+            <div id="top-scrollbar-container">
+                <div id="top-scrollbar-content"></div>
+            </div>
+            <div class="table-responsive">
+                <table id="processosTable">
+                    <thead></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let jsonData = [];
+        // Armazena os índices das linhas marcadas para preservar o estado
+        const markedRows = new Set();
+
+        const topScrollbar = document.getElementById('top-scrollbar-container');
+        const tableWrapper = document.querySelector('.table-responsive');
+
+        document.getElementById('jsonFile').addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (!file) {
+                document.getElementById('fileName').textContent = 'Nenhum arquivo selecionado';
+                return;
+            }
+            if (file.type !== 'application/json') {
+                alert('Tipo de arquivo inválido! Por favor, selecione um arquivo .json.');
+                return;
+            }
+            
+            document.getElementById('fileName').textContent = `Arquivo: ${file.name}`;
+            document.getElementById('status').textContent = 'Lendo o arquivo...';
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const jsonContent = JSON.parse(e.target.result);
+                    if (jsonContent && Array.isArray(jsonContent.items)) {
+                        jsonData = jsonContent.items;
+                        const itemCount = jsonData.length;
+                        const officialCount = jsonContent.count;
+
+                        document.getElementById('status').textContent = `Arquivo carregado! Tabela gerada com ${itemCount} itens. (Contagem oficial: ${officialCount})`;
+                        if (itemCount !== officialCount) {
+                            alert(`Atenção: A contagem de linhas (${itemCount}) difere da contagem oficial do arquivo (${officialCount}).`);
+                        }
+                        
+                        // Limpa o estado ao carregar novo arquivo
+                        markedRows.clear(); 
+
+                        populateColumnSelector(jsonData);
+                        renderTable();
+                        document.getElementById('columnSelector').style.display = 'block';
+                        
+                        setupScrollSync();
+                    } else {
+                        throw new Error('O arquivo JSON não contém a chave "items" ou ela não é um array.');
+                    }
+                } catch (error) {
+                    document.getElementById('status').textContent = `Erro ao processar o arquivo: ${error.message}`;
+                    alert(`Ocorreu um erro ao ler o arquivo JSON: ${error.message}`);
+                }
+            };
+            reader.readAsText(file);
+        });
+
+        function populateColumnSelector(data) {
+            const container = document.getElementById('columnCheckboxes');
+            container.innerHTML = '';
+            if (data.length === 0) return;
+
+            const allKeys = Object.keys(data[0]);
+            // COLUNAS PADRÃO ATUALIZADAS
+            const defaultColumns = ["siglaTribunal", "nomeOrgao", "texto", "numeroprocessocommascara"];
+
+            allKeys.forEach(key => {
+                const label = document.createElement('label');
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.value = key;
+                checkbox.checked = defaultColumns.includes(key);
+                checkbox.addEventListener('change', () => {
+                    renderTable();
+                    setupScrollSync();
+                });
+                
+                label.appendChild(checkbox);
+                label.appendChild(document.createTextNode(key));
+                container.appendChild(label);
+            });
+        }
+
+        function renderTable() {
+            const table = document.getElementById('processosTable');
+            const thead = table.querySelector('thead');
+            const tbody = table.querySelector('tbody');
+            thead.innerHTML = '';
+            tbody.innerHTML = '';
+
+            const selectedColumns = Array.from(document.querySelectorAll('#columnCheckboxes input:checked')).map(cb => cb.value);
+
+            const headerRow = document.createElement('tr');
+            ['Nº', 'Marcar'].concat(selectedColumns).forEach(text => {
+                const th = document.createElement('th');
+                th.textContent = text;
+                headerRow.appendChild(th);
+            });
+            thead.appendChild(headerRow);
+
+            jsonData.forEach((item, index) => {
+                const row = document.createElement('tr');
+                
+                const tdNum = document.createElement('td');
+                tdNum.textContent = index + 1;
+                row.appendChild(tdNum);
+
+                const tdCheck = document.createElement('td');
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.addEventListener('change', (e) => {
+                    row.classList.toggle('row-strikethrough', e.target.checked);
+                    row.classList.toggle('row-collapsed', e.target.checked);
+                    // Atualiza o estado da linha marcada
+                    if (e.target.checked) {
+                        markedRows.add(index);
+                    } else {
+                        markedRows.delete(index);
+                    }
+                });
+                tdCheck.appendChild(checkbox);
+                row.appendChild(tdCheck);
+                
+                // Verifica se a linha estava marcada antes e aplica os estilos
+                if (markedRows.has(index)) {
+                    checkbox.checked = true;
+                    row.classList.add('row-strikethrough', 'row-collapsed');
+                }
+
+                selectedColumns.forEach(col => {
+                    const td = document.createElement('td');
+                    const contentDiv = document.createElement('div');
+                    let content = item[col] || '';
+                    
+                    if (col === 'siglaTribunal' && typeof content === 'string' && !content.includes('TRT')) {
+                         contentDiv.innerHTML = `<span class="tribunal-alert">${content}</span>`;
+                    } else {
+                        contentDiv.innerHTML = content;
+                    }
+                    td.appendChild(contentDiv);
+                    row.appendChild(td);
+                });
+                tbody.appendChild(row);
+            });
+        }
+        
+        function setupScrollSync() {
+            const table = document.getElementById('processosTable');
+            const topScrollContent = document.getElementById('top-scrollbar-content');
+            if (!table) return;
+            
+            topScrollContent.style.width = `${table.scrollWidth}px`;
+            
+            topScrollbar.onscroll = () => { tableWrapper.scrollLeft = topScrollbar.scrollLeft; };
+            tableWrapper.onscroll = () => { topScrollbar.scrollLeft = tableWrapper.scrollLeft; };
+        }
+
+    </script>
+
+</body>
+</html>
