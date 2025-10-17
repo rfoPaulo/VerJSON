@@ -81,6 +81,30 @@
         }
         .file-upload-label:hover { background-color: #2980b9; }
 
+        /* Estilo para o overlay de drag and drop */
+        #drop-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(44, 62, 80, 0.85);
+            z-index: 1000;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 2em;
+            font-weight: bold;
+            text-align: center;
+            border: 4px dashed #ffffff;
+            box-sizing: border-box;
+        }
+        #drop-overlay.show {
+            display: flex;
+        }
+
+
         /* DROPDOWN MENU PARA COLUNAS */
         .dropdown {
             position: relative;
@@ -153,6 +177,9 @@
     </style>
 </head>
 <body>
+    <div id="drop-overlay">
+        <div>Solte o arquivo JSON em qualquer lugar</div>
+    </div>
     <div class="page-container">
         <div class="top-section">
             <h1>Gerador de Tabela a partir de JSON - API DJEN</h1>
@@ -197,6 +224,9 @@
         const columnSelectBtn = document.getElementById('column-select-btn');
         const columnDropdownContent = document.getElementById('columnDropdownContent');
         const statusLine = document.getElementById('status-line');
+        const jsonFileInput = document.getElementById('jsonFile');
+        const dropOverlay = document.getElementById('drop-overlay');
+
 
         // Lógica do Dropdown
         columnSelectBtn.addEventListener('click', () => {
@@ -213,10 +243,9 @@
         columnDropdownContent.addEventListener('click', function (event) {
             event.stopPropagation();
         });
-
-        // Lógica de Upload e Renderização
-        document.getElementById('jsonFile').addEventListener('change', function(event) {
-            const file = event.target.files[0];
+        
+        // Função central para processar o arquivo
+        function handleFile(file) {
             if (!file) {
                 statusLine.textContent = 'Nenhum arquivo selecionado';
                 return;
@@ -261,7 +290,49 @@
                 }
             };
             reader.readAsText(file);
+        }
+
+        // Evento de clique no input
+        jsonFileInput.addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            handleFile(file);
         });
+
+        // --- LÓGICA DE DRAG AND DROP NA TELA INTEIRA ---
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            document.body.addEventListener(eventName, e => {
+                e.preventDefault();
+                e.stopPropagation();
+            });
+        });
+
+        let dragCounter = 0; // Previne que o evento 'dragleave' dispare em elementos filhos
+
+        document.body.addEventListener('dragenter', (e) => {
+            dragCounter++;
+            dropOverlay.classList.add('show');
+        });
+
+        document.body.addEventListener('dragleave', (e) => {
+            dragCounter--;
+            if (dragCounter === 0) {
+                dropOverlay.classList.remove('show');
+            }
+        });
+
+        document.body.addEventListener('drop', (event) => {
+            event.preventDefault();
+            dragCounter = 0;
+            dropOverlay.classList.remove('show');
+            
+            const files = event.dataTransfer.files;
+            if (files.length > 0) {
+                // Atribui o arquivo solto ao input para consistência
+                jsonFileInput.files = files;
+                handleFile(files[0]);
+            }
+        });
+
 
         function populateColumnSelector(data) {
             const container = document.getElementById('columnDropdownContent');
@@ -318,7 +389,7 @@
             const selectedColumns = Array.from(document.querySelectorAll('#columnDropdownContent input:checked')).map(cb => cb.value);
 
             const headerRow = thead.insertRow();
-            ['Nº', 'Marcar'].concat(selectedColumns).forEach(text => {
+            ['Nº', 'Riscar'].concat(selectedColumns).forEach(text => {
                 const th = document.createElement('th');
                 th.textContent = text;
                 headerRow.appendChild(th);
@@ -394,3 +465,4 @@
     </script>
 </body>
 </html>
+
