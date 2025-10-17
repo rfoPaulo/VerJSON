@@ -5,193 +5,176 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Visualizador de Processos JSON Aprimorado</title>
     <style>
-        /* Estilo geral do corpo da página */
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            line-height: 1.6;
-            background-color: #f4f7f6;
-            color: #333;
+        /* LAYOUT GERAL DA PÁGINA */
+        html, body {
+            height: 100%;
+            overflow: hidden;
             margin: 0;
-            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f4f7f6;
         }
 
-        /* Container principal para centralizar o conteúdo */
-        .container {
-            max-width: 95%;
-            margin: 0 auto;
+        .page-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        
+        /* SEÇÃO SUPERIOR COMPACTA */
+        .top-section {
+            padding: 15px 25px;
             background-color: #ffffff;
-            padding: 25px;
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            z-index: 20;
+            box-sizing: border-box;
         }
-
-        /* Título da página */
         h1 {
             text-align: center;
             color: #2c3e50;
-            margin-bottom: 20px;
+            margin: 0 0 10px 0;
+            font-size: 1.5em;
         }
-        
-        /* Estilo do botão de upload de arquivo */
-        .file-upload-wrapper {
+        .status-line {
+            text-align: center;
+            margin: 0 0 15px 0;
+            font-size: 0.9em;
+            color: #333;
+        }
+        .top-controls {
             display: flex;
-            justify-content: center;
+            justify-content: space-between;
+            align-items: flex-end;
+            gap: 20px;
+        }
+        .control-group {
+            display: flex;
             align-items: center;
-            margin-bottom: 20px;
+            gap: 10px;
         }
-
-        input[type="file"] {
-            display: none;
+        .filter-container {
+            flex-grow: 1;
         }
-
+        .filter-container label {
+            display: block;
+            font-size: 0.9em;
+            color: #34495e;
+            margin-bottom: 2px;
+        }
+        #filterInput {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
         .file-upload-label {
             display: inline-block;
-            padding: 12px 25px;
+            padding: 8px 15px;
+            font-size: 0.9em;
             background-color: #3498db;
             color: white;
             border-radius: 5px;
             cursor: pointer;
             font-weight: bold;
             transition: background-color 0.3s ease;
+            white-space: nowrap;
         }
+        .file-upload-label:hover { background-color: #2980b9; }
 
-        .file-upload-label:hover {
-            background-color: #2980b9;
-        }
-        
-        #fileName {
-            margin-left: 15px;
-            font-style: italic;
-            color: #555;
-        }
-
-        /* Estilo do seletor de colunas */
-        #columnSelector {
-            margin-bottom: 20px;
-            padding: 15px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            background-color: #f9f9f9;
-        }
-        #columnSelector h3 {
-            margin-top: 0;
-            margin-bottom: 10px;
-            color: #34495e;
-        }
-        #columnSelector .checkbox-group {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 15px;
-        }
-        #columnSelector label {
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-        }
-        #columnSelector input[type="checkbox"] {
-            margin-right: 5px;
-        }
-
-        /* Container da Tabela com Barra Superior */
-        .table-container {
+        /* DROPDOWN MENU PARA COLUNAS */
+        .dropdown {
             position: relative;
         }
-        #top-scrollbar-container {
-            overflow-x: auto;
-            overflow-y: hidden;
-        }
-        #top-scrollbar-content {
-            height: 1px; /* Apenas para criar o espaço de rolagem */
-        }
-        
-        /* Estilo da área da tabela para rolagem */
-        .table-responsive {
-            max-height: 70vh;
-            overflow-y: auto;
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-            border: 1px solid #ddd;
-        }
-
-        /* Estilo da tabela */
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        /* Estilo do cabeçalho da tabela */
-        thead th {
-            position: sticky;
-            top: 0;
+        .dropdown-button {
+            padding: 8px 15px;
+            font-size: 0.9em;
             background-color: #34495e;
-            color: #ffffff;
-            z-index: 10;
-        }
-
-        th, td {
-            padding: 12px 15px;
-            border: 1px solid #ddd;
-            text-align: left;
-            vertical-align: top;
-        }
-
-        th {
-            font-weight: 600;
-        }
-
-        /* Estilo das linhas da tabela */
-        tbody tr:nth-of-type(even) {
-            background-color: #f8f9fa;
-        }
-        tbody tr:hover {
-            background-color: #e9ecef;
-        }
-        
-        /* Estilos para a linha marcada e recolhida */
-        .row-strikethrough {
-            text-decoration: line-through;
-            color: #aaa;
-            background-color: #f0f0f0 !important;
-        }
-        .row-collapsed td > div {
-            max-height: 8em; /* (line-height) 1.6 * 5 = 8em */
-            overflow: hidden;
-        }
-        
-        /* Estilo para o alerta de tribunal */
-        .tribunal-alert {
-            color: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
             font-weight: bold;
+            white-space: nowrap;
         }
-        
-        #status {
-            text-align: center;
-            font-size: 1.1em;
-            color: #7f8c8d;
-            margin-bottom: 20px;
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            right: 0;
+            background-color: #f9f9f9;
+            min-width: 200px;
+            box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+            padding: 12px 16px;
+            z-index: 100;
+            max-height: 250px;
+            overflow-y: auto;
+            border-radius: 5px;
+        }
+        .dropdown-content label {
+            display: block;
+            font-size: 0.9em;
+            padding: 5px 0;
+        }
+        .dropdown-content.show {
+            display: block;
         }
 
+        /* CONTAINER DA TABELA (ESPAÇO RESTANTE) */
+        .table-area {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 15px 25px;
+            box-sizing: border-box;
+            min-height: 0;
+        }
+        #top-scrollbar-container { overflow-x: auto; overflow-y: hidden; }
+        #top-scrollbar-content { height: 1px; }
+        .table-responsive {
+            flex-grow: 1;
+            overflow: auto;
+            border: 1px solid #ddd;
+        }
+        /* CHECKBOX*/
+        input[type="checkbox" i]{
+            transform: scale(1.5);
+        }
+
+        /* ESTILOS DA TABELA */
+        table { width: 100%; border-collapse: collapse; }
+        thead th { position: sticky; top: 0; background-color: #34495e; color: #ffffff; z-index: 10; }
+        th, td { padding: 12px 15px; border: 1px solid #ddd; text-align: left; vertical-align: top; }
+        th { font-weight: 600; }
+        tbody tr:nth-of-type(even) { background-color: #f8f9fa; }
+        tbody tr:hover { background-color: #e9ecef; }
+        .row-strikethrough { text-decoration: line-through; color: #aaa; background-color: #f0f0f0 !important; }
+        .row-collapsed td > div { max-height: 8em; overflow: hidden; }
+        .tribunal-alert { color: #e74c3c; font-weight: bold; }
+        mark { background-color: #ff0; padding: 0.2em; }
     </style>
 </head>
 <body>
-
-    <div class="container">
-        <h1>Gerador de Tabela a partir de JSON</h1>
-        
-        <div class="file-upload-wrapper">
-            <label for="jsonFile" class="file-upload-label">Selecionar Arquivo JSON</label>
-            <input type="file" id="jsonFile" accept=".json">
-            <span id="fileName">Nenhum arquivo selecionado</span>
+    <div class="page-container">
+        <div class="top-section">
+            <h1>Gerador de Tabela a partir de JSON - API DJEN</h1>
+            <p id="status-line" class="status-line">Aguardando arquivo...</p>
+            <div class="top-controls">
+                <div class="control-group">
+                    <label for="jsonFile" class="file-upload-label">Selecionar Arquivo JSON</label>
+                    <input type="file" id="jsonFile" accept=".json" style="display: none;">
+                </div>
+                <div class="filter-container">
+                    <strong><label for="filterInput">Filtrar coluna 'texto' (use '&' para E, '|' para OU):</label></strong>
+                    <input type="text" id="filterInput" placeholder="Digite os termos do filtro aqui...">
+                </div>
+                <div class="dropdown">
+                    <button id="column-select-btn" class="dropdown-button">Escolher Colunas Exibidas</button>
+                    <div id="columnDropdownContent" class="dropdown-content">
+                        </div>
+                </div>
+            </div>
         </div>
 
-        <p id="status">Aguardando arquivo para gerar a tabela...</p>
-
-        <div id="columnSelector" style="display: none;">
-            <h3>Escolha as Colunas:</h3>
-            <div id="columnCheckboxes" class="checkbox-group"></div>
-        </div>
-
-        <div class="table-container">
+        <div class="table-area">
             <div id="top-scrollbar-container">
                 <div id="top-scrollbar-content"></div>
             </div>
@@ -206,16 +189,36 @@
     
     <script>
         let jsonData = [];
-        // Armazena os índices das linhas marcadas para preservar o estado
         const markedRows = new Set();
 
+        const filterInput = document.getElementById('filterInput');
         const topScrollbar = document.getElementById('top-scrollbar-container');
         const tableWrapper = document.querySelector('.table-responsive');
+        const columnSelectBtn = document.getElementById('column-select-btn');
+        const columnDropdownContent = document.getElementById('columnDropdownContent');
+        const statusLine = document.getElementById('status-line');
 
+        // Lógica do Dropdown
+        columnSelectBtn.addEventListener('click', () => {
+            columnDropdownContent.classList.toggle('show');
+        });
+
+        window.addEventListener('click', function(event) {
+            if (!event.target.matches('.dropdown-button')) {
+                if (columnDropdownContent.classList.contains('show')) {
+                    columnDropdownContent.classList.remove('show');
+                }
+            }
+        });
+        columnDropdownContent.addEventListener('click', function (event) {
+            event.stopPropagation();
+        });
+
+        // Lógica de Upload e Renderização
         document.getElementById('jsonFile').addEventListener('change', function(event) {
             const file = event.target.files[0];
             if (!file) {
-                document.getElementById('fileName').textContent = 'Nenhum arquivo selecionado';
+                statusLine.textContent = 'Nenhum arquivo selecionado';
                 return;
             }
             if (file.type !== 'application/json') {
@@ -223,8 +226,7 @@
                 return;
             }
             
-            document.getElementById('fileName').textContent = `Arquivo: ${file.name}`;
-            document.getElementById('status').textContent = 'Lendo o arquivo...';
+            statusLine.textContent = `Lendo o arquivo: ${file.name}...`;
 
             const reader = new FileReader();
             reader.onload = function(e) {
@@ -234,25 +236,27 @@
                         jsonData = jsonContent.items;
                         const itemCount = jsonData.length;
                         const officialCount = jsonContent.count;
-
-                        document.getElementById('status').textContent = `Arquivo carregado! Tabela gerada com ${itemCount} itens. (Contagem oficial: ${officialCount})`;
+                        
+                        // ATUALIZA A LINHA DE STATUS
+                        statusLine.innerHTML = `<strong>Arquivo:</strong> ${file.name} | <strong>Linhas na Tabela:</strong> ${itemCount} | <strong>Contagem Oficial:</strong> ${officialCount}`;
                         if (itemCount !== officialCount) {
-                            alert(`Atenção: A contagem de linhas (${itemCount}) difere da contagem oficial do arquivo (${officialCount}).`);
+                            statusLine.style.color = '#e74c3c'; // Deixa o texto vermelho
+                            alert(`Atenção: O número de linhas na tabela (${itemCount}) é diferente da contagem oficial no arquivo (${officialCount}).`);
+                        } else {
+                            statusLine.style.color = '#333'; // Volta para a cor normal
                         }
                         
-                        // Limpa o estado ao carregar novo arquivo
                         markedRows.clear(); 
+                        filterInput.value = '';
 
                         populateColumnSelector(jsonData);
                         renderTable();
-                        document.getElementById('columnSelector').style.display = 'block';
-                        
                         setupScrollSync();
                     } else {
                         throw new Error('O arquivo JSON não contém a chave "items" ou ela não é um array.');
                     }
                 } catch (error) {
-                    document.getElementById('status').textContent = `Erro ao processar o arquivo: ${error.message}`;
+                    statusLine.textContent = `Erro: ${error.message}`;
                     alert(`Ocorreu um erro ao ler o arquivo JSON: ${error.message}`);
                 }
             };
@@ -260,12 +264,11 @@
         });
 
         function populateColumnSelector(data) {
-            const container = document.getElementById('columnCheckboxes');
+            const container = document.getElementById('columnDropdownContent');
             container.innerHTML = '';
             if (data.length === 0) return;
 
             const allKeys = Object.keys(data[0]);
-            // COLUNAS PADRÃO ATUALIZADAS
             const defaultColumns = ["siglaTribunal", "nomeOrgao", "texto", "numeroprocessocommascara"];
 
             allKeys.forEach(key => {
@@ -280,71 +283,99 @@
                 });
                 
                 label.appendChild(checkbox);
-                label.appendChild(document.createTextNode(key));
+                label.appendChild(document.createTextNode(` ${key}`));
                 container.appendChild(label);
             });
+        }
+        
+        function escapeRegExp(string) {
+            return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        }
+
+        function highlightText(text, terms) {
+            if (!terms || terms.length === 0 || !text) return text;
+            const regex = new RegExp(`(${terms.map(escapeRegExp).join('|')})`, 'gi');
+            return text.replace(regex, '<mark>$1</mark>');
         }
 
         function renderTable() {
             const table = document.getElementById('processosTable');
-            const thead = table.querySelector('thead');
-            const tbody = table.querySelector('tbody');
+            let thead = table.querySelector('thead');
+            let tbody = table.querySelector('tbody');
+
+            if (!thead) {
+                thead = document.createElement('thead');
+                table.appendChild(thead);
+            }
+            if (!tbody) {
+                tbody = document.createElement('tbody');
+                table.appendChild(tbody);
+            }
+            
             thead.innerHTML = '';
             tbody.innerHTML = '';
+            
+            const selectedColumns = Array.from(document.querySelectorAll('#columnDropdownContent input:checked')).map(cb => cb.value);
 
-            const selectedColumns = Array.from(document.querySelectorAll('#columnCheckboxes input:checked')).map(cb => cb.value);
-
-            const headerRow = document.createElement('tr');
+            const headerRow = thead.insertRow();
             ['Nº', 'Marcar'].concat(selectedColumns).forEach(text => {
                 const th = document.createElement('th');
                 th.textContent = text;
                 headerRow.appendChild(th);
             });
-            thead.appendChild(headerRow);
+
+            const filterQuery = filterInput.value.trim().toLowerCase();
+            const uniqueTerms = filterQuery ? [...new Set(filterQuery.split(/[&|]/).map(s => s.trim()).filter(Boolean))] : [];
 
             jsonData.forEach((item, index) => {
-                const row = document.createElement('tr');
+                let shouldRender = true;
+                if (filterQuery) {
+                    const textToSearch = (item.texto || '').toLowerCase();
+                    const orGroups = filterQuery.split('|').map(s => s.trim());
+                    shouldRender = orGroups.some(orGroup => {
+                        const andTerms = orGroup.split('&').map(s => s.trim()).filter(Boolean);
+                        if (andTerms.length === 0 && orGroups.length > 1) return true;
+                        if(andTerms.length === 0) return textToSearch.includes(orGroup);
+                        return andTerms.every(andTerm => textToSearch.includes(andTerm));
+                    });
+                }
                 
-                const tdNum = document.createElement('td');
-                tdNum.textContent = index + 1;
-                row.appendChild(tdNum);
+                if (!shouldRender) return;
 
-                const tdCheck = document.createElement('td');
+                const row = tbody.insertRow();
+                
+                row.insertCell().textContent = index + 1;
+
+                const tdCheck = row.insertCell();
                 const checkbox = document.createElement('input');
                 checkbox.type = 'checkbox';
                 checkbox.addEventListener('change', (e) => {
                     row.classList.toggle('row-strikethrough', e.target.checked);
                     row.classList.toggle('row-collapsed', e.target.checked);
-                    // Atualiza o estado da linha marcada
-                    if (e.target.checked) {
-                        markedRows.add(index);
-                    } else {
-                        markedRows.delete(index);
-                    }
+                    if (e.target.checked) markedRows.add(index);
+                    else markedRows.delete(index);
                 });
                 tdCheck.appendChild(checkbox);
-                row.appendChild(tdCheck);
                 
-                // Verifica se a linha estava marcada antes e aplica os estilos
                 if (markedRows.has(index)) {
                     checkbox.checked = true;
                     row.classList.add('row-strikethrough', 'row-collapsed');
                 }
 
                 selectedColumns.forEach(col => {
-                    const td = document.createElement('td');
+                    const td = row.insertCell();
                     const contentDiv = document.createElement('div');
                     let content = item[col] || '';
                     
-                    if (col === 'siglaTribunal' && typeof content === 'string' && !content.includes('TRT')) {
-                         contentDiv.innerHTML = `<span class="tribunal-alert">${content}</span>`;
+                    if (col === 'texto' && uniqueTerms.length > 0) {
+                        contentDiv.innerHTML = highlightText(content, uniqueTerms);
+                    } else if (col === 'siglaTribunal' && typeof content === 'string' && !content.includes('TRT')) {
+                        contentDiv.innerHTML = `<span class="tribunal-alert">${content}</span>`;
                     } else {
                         contentDiv.innerHTML = content;
                     }
                     td.appendChild(contentDiv);
-                    row.appendChild(td);
                 });
-                tbody.appendChild(row);
             });
         }
         
@@ -358,8 +389,8 @@
             topScrollbar.onscroll = () => { tableWrapper.scrollLeft = topScrollbar.scrollLeft; };
             tableWrapper.onscroll = () => { topScrollbar.scrollLeft = tableWrapper.scrollLeft; };
         }
-
+        
+        filterInput.addEventListener('input', renderTable);
     </script>
-
 </body>
 </html>
