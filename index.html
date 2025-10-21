@@ -251,8 +251,9 @@
                 statusLine.textContent = 'Nenhum arquivo selecionado';
                 return;
             }
-            if (file.type !== 'application/json') {
-                alert('Tipo de arquivo inválido! Por favor, selecione um arquivo .json.');
+            // Permite .json ou arquivos de texto plano que podem conter o formato esperado
+            if (file.type !== 'application/json' && file.type !== 'text/plain') {
+                alert('Tipo de arquivo inválido! Por favor, selecione um arquivo .json ou de texto.');
                 return;
             }
             
@@ -261,37 +262,86 @@
             const reader = new FileReader();
             reader.onload = function(e) {
                 try {
-                    const jsonContent = JSON.parse(e.target.result);
-                    if (jsonContent && Array.isArray(jsonContent.items)) {
-                        jsonData = jsonContent.items;
-                        const itemCount = jsonData.length;
-                        const officialCount = jsonContent.count;
-                        
-                        // ATUALIZA A LINHA DE STATUS
-                        statusLine.innerHTML = `<strong>Arquivo:</strong> ${file.name} | <strong>Linhas na Tabela:</strong> ${itemCount} | <strong>Contagem Oficial:</strong> ${officialCount}`;
-                        if (itemCount !== officialCount) {
-                            statusLine.style.color = '#e74c3c'; // Deixa o texto vermelho
-                            alert(`Atenção: O número de linhas na tabela (${itemCount}) é diferente da contagem oficial no arquivo (${officialCount}).`);
-                        } else {
-                            statusLine.style.color = '#333'; // Volta para a cor normal
-                        }
-                        
-                        markedRows.clear(); 
-                        filterInput.value = '';
+                    const fileContent = e.target.result;
+                    let processedItems = [];
+                    let totalOfficialCount = 0;
+                    let isOldFormat = false;
 
-                        populateColumnSelector(jsonData);
-                        renderTable();
-                        setupScrollSync();
-                    } else {
-                        throw new Error('O arquivo JSON não contém a chave "items" ou ela não é um array.');
+                    // Tenta analisar como um único objeto JSON (formato antigo)
+                    try {
+                        const singleJson = JSON.parse(fileContent);
+                        if (singleJson && typeof singleJson.items !== 'undefined') {
+                            isOldFormat = true;
+                            processedItems = singleJson.items || [];
+                            totalOfficialCount = singleJson.count || 0;
+                        }
+                    } catch (err) {
+                        // Se falhar, assume que é o novo formato de múltiplos blocos
+                        isOldFormat = false;
                     }
+
+                    // Se não for o formato antigo, processa o novo formato
+                    if (!isOldFormat) {
+                        // Divide o conteúdo em blocos, usando o número do processo como delimitador.
+                        // A expressão regular usa um lookahead (?=...) para manter o delimitador no início de cada bloco.
+                        // O filtro remove quaisquer strings vazias que possam surgir da divisão.
+                        const blocks = fileContent.split(/^\s*(?=[\d.-]{10,})/m).filter(s => s.trim() !== '');
+                        let aggregatedItems = [];
+
+                        for(const block of blocks) {
+                            const lines = block.trim().split('\n');
+                            const processNumber = lines.shift().trim(); // A primeira linha é o número do processo
+                            const jsonString = lines.join('\n'); // O resto é o JSON
+                            
+                            try {
+                                const blockJson = JSON.parse(jsonString);
+                                // A contagem oficial é a soma de todos os 'count'
+                                totalOfficialCount += blockJson.count || 0;
+
+                                // Adiciona à tabela apenas se o 'count' do bloco for diferente de 0
+                                if (blockJson && blockJson.count > 0 && Array.isArray(blockJson.items)) {
+                                    const itemsWithProcessNumber = blockJson.items.map(item => ({
+                                        ...item,
+                                        numero_processo_principal: processNumber
+                                    }));
+                                    aggregatedItems.push(...itemsWithProcessNumber);
+                                }
+                            } catch (parseError) {
+                                console.warn(`Não foi possível analisar o bloco JSON para o processo ${processNumber}:`, parseError, `\nConteúdo do bloco:`, jsonString);
+                            }
+                        }
+                        processedItems = aggregatedItems;
+                    }
+                    
+                    jsonData = processedItems;
+                    const itemCount = jsonData.length;
+
+                    // ATUALIZA A LINHA DE STATUS
+                    statusLine.innerHTML = `<strong>Arquivo:</strong> ${file.name} | <strong>Linhas na Tabela:</strong> ${itemCount} | <strong>Contagem Oficial (soma):</strong> ${totalOfficialCount}`;
+                    
+                    // Alerta de divergência apenas para o formato antigo, onde a contagem deve bater
+                    if (isOldFormat && itemCount !== totalOfficialCount) {
+                        statusLine.style.color = '#e74c3c'; 
+                        alert(`Atenção: O número de linhas na tabela (${itemCount}) é diferente da contagem oficial no arquivo (${totalOfficialCount}).`);
+                    } else {
+                        statusLine.style.color = '#333'; 
+                    }
+                    
+                    markedRows.clear(); 
+                    filterInput.value = '';
+
+                    populateColumnSelector(jsonData);
+                    renderTable();
+                    setupScrollSync();
+
                 } catch (error) {
                     statusLine.textContent = `Erro: ${error.message}`;
-                    alert(`Ocorreu um erro ao ler o arquivo JSON: ${error.message}`);
+                    alert(`Ocorreu um erro ao processar o arquivo: ${error.message}`);
                 }
             };
             reader.readAsText(file);
         }
+
 
         // Evento de clique no input
         jsonFileInput.addEventListener('change', function(event) {
@@ -345,9 +395,10 @@
                 Object.keys(item).forEach(key => allKeys.add(key));
             });
 
+            
             const defaultColumns = ["siglaTribunal", "nomeOrgao", "texto", "numeroprocessocommascara"];
 
-            Array.from(allKeys).forEach(key => {
+            Array.from(allKeys).forEach(key => { 
                 const label = document.createElement('label');
                 const checkbox = document.createElement('input');
                 checkbox.type = 'checkbox';
