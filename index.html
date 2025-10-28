@@ -522,7 +522,10 @@
                             contentDiv.innerHTML = `<span class="tribunal-alert-red">${content}</span>`;
                         } else if (col === 'siglaTribunal' && typeof content === 'string' && !content.includes('TRT4')) {
                             contentDiv.innerHTML = `<span class="tribunal-alert-orange">${content}</span>`;
-                        } else {
+                        } else if (col === 'numeroprocessocommascara' && typeof content === 'string' && content.includes('0000164-13.2017.5.09.0965')) {
+                            contentDiv.innerHTML = `<span class="tribunal-alert-orange">${content} (PF - Movimentar CPJ 50299993120128210001)</span>`;
+                        }
+                        else {
                             contentDiv.innerHTML = content;
                         }
                     }
@@ -546,4 +549,3 @@
     </script>
 </body>
 </html>
-
